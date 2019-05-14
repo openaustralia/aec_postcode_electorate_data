@@ -8,18 +8,23 @@ from bs4 import BeautifulSoup
 os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 import scraperwiki
 
-postcode = 2193
+
 urltemplate = "https://electorate.aec.gov.au/LocalitySearchResults.aspx?filter={}&filterby=Postcode"
-url = str.format(urltemplate, postcode)
+postcodes = open("postcodes", "r").readlines()
+total_codes = len(postcodes)
+i = 0
+for postcode in postcodes:
+    i+=1
+    postcode = postcode.strip()
+    print("{}: {}/{}".format(postcode, i, total_codes))
+    url = str.format(urltemplate, postcode)
 
-page = requests.get(url).content
-bs4 = BeautifulSoup(page, "html.parser")
+    page = requests.get(url).content
+    bs4 = BeautifulSoup(page, "html.parser")
 
-results = bs4.find(id='ContentPlaceHolderBody_gridViewLocalities')
-
-rows = results.find_all('tr')
-for row in rows:
-    tds = row.find_all('td')
-    if tds:
-        rowdata = {'state': tds[0].text, 'suburb': tds[1].text, 'postcode': tds[2].text, 'electorate': tds[3].text, 'redistributed': tds[4].text, 'other': tds[5].text}
-        scraperwiki.sqlite.save(unique_keys=('state', 'suburb', 'postcode', 'electorate'), data=rowdata, table_name='data')
+    rows = bs4.find(id='ContentPlaceHolderBody_gridViewLocalities').find_all('tr')
+    for row in rows:
+        tds = row.find_all('td')
+        if len(tds) == 6:
+            rowdata = {'state': tds[0].text, 'suburb': tds[1].text, 'postcode': tds[2].text, 'electorate': tds[3].text, 'redistributed': tds[4].text, 'other': tds[5].text}
+            scraperwiki.sqlite.save(unique_keys=('state', 'suburb', 'postcode', 'electorate'), data=rowdata, table_name='data')
